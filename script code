@@ -1,25 +1,58 @@
 --[[
-    Eclipse Key System – Combined Script (Stable)
+    Eclipse Key System – Combined Script (Final)
+    - Universal HTTP (works with most executors)
+    - Device binding, key validation, Eclipse UI
+    - Supports Linkvertise and Lootlabs offers
 ]]
 
--- ========== UNIVERSAL HTTP FUNCTION ==========
+-- ========== UNIVERSAL HTTP FUNCTION (robust) ==========
 local function httpRequest(method, url, body)
-    local requestFunc = syn and syn.request or http_request or request or (game and game:HttpGet) or nil
-    if not requestFunc then
-        warn("No HTTP request function found.")
-        return nil
+    local requestFunc = nil
+
+    -- Try to find a working HTTP function
+    local candidates = {
+        syn and syn.request,
+        http_request,
+        request,
+        game.HttpPost,
+        function(_, _, data) return game:GetService("HttpService"):PostAsync(url, data, Enum.HttpContentType.ApplicationJson) end,
+        function(_, _, data) return game:HttpGet(url, true) end -- fallback (GET only)
+    }
+
+    for _, f in ipairs(candidates) do
+        if f and type(f) == "function" then
+            requestFunc = f
+            break
+        end
     end
+
+    if not requestFunc then
+        warn("No HTTP function found. This script requires an executor that supports HTTP requests.")
+        return { error = "No HTTP support" }
+    end
+
     if method == "POST" then
-        local options = {
-            Url = url,
-            Method = method,
-            Headers = { ["Content-Type"] = "application/json" },
-            Body = body
-        }
-        local response = requestFunc(options)
-        return response and response.Body or nil
+        -- Try to send POST with body
+        local success, result
+        if requestFunc == game.HttpPost then
+            success, result = pcall(requestFunc, url, body, "application/json")
+        elseif requestFunc == game:GetService("HttpService").PostAsync then
+            success, result = pcall(requestFunc, url, body, Enum.HttpContentType.ApplicationJson)
+        else
+            local options = {
+                Url = url,
+                Method = method,
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = body
+            }
+            success, result = pcall(requestFunc, options)
+            if success and result then result = result.Body or result end
+        end
+        if success then return result else return nil end
     else
-        return game:HttpGet(url)
+        -- GET
+        local success, result = pcall(game.HttpGet, url)
+        if success then return result else return nil end
     end
 end
 
@@ -55,7 +88,7 @@ function Library:CreateWindow(config)
     ScreenGui.Name = "EclipseKeyUI"
     ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.Parent = game:GetService("CoreGui")   -- changed
+    ScreenGui.Parent = game:GetService("CoreGui")
 
     MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
@@ -224,10 +257,12 @@ local OFFERS = {
 -- ========== SUPPORTED GAMES ==========
 local SUPPORTED_GAMES = {
     [1537690962] = function()
-        -- ========== BEE SWARM FARMING CODE ==========
+        -- ############################################################
+        -- ########## PASTE YOUR BEE SWARM FARMING CODE BELOW #########
+        -- ############################################################
         print("Bee Swarm Simulator script loaded!")
-        -- Your farming code here...
-        -- ========== END ==========
+        -- Your farming code goes here...
+        -- ############################################################
     end,
 }
 
@@ -268,10 +303,8 @@ local function validateKey(key)
     if not key or key == "" then return false end
     local url = API_BASE .. "/validate"
     local body = HttpService:JSONEncode({ key = key, deviceId = deviceToken })
-    local success, result = pcall(function()
-        return httpRequest("POST", url, body)
-    end)
-    if not success then return false end
+    local result = httpRequest("POST", url, body)
+    if not result then return false end
     local data = HttpService:JSONDecode(result)
     return data.valid or false
 end
@@ -279,6 +312,7 @@ end
 -- Game check
 local gameId = game.PlaceId
 local gameScript = SUPPORTED_GAMES[gameId]
+
 if not gameScript then
     local success, Fluent = pcall(function()
         return loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -311,7 +345,7 @@ if savedKey and validateKey(savedKey) then
     return
 end
 
--- ========== CREATE UI ==========
+-- ========== UI ==========
 local ui = _G.Eclipse:CreateWindow({ Title = "Eclipse Key System", ToggleKey = Enum.KeyCode.G })
 ui.StatusLabel.Text = "Status: Ready"
 
@@ -348,7 +382,8 @@ end)
 ui.LinkvertiseButton.MouseButton1Click:Connect(function()
     local code = generateCode()
     local success = pcall(function()
-        return httpRequest("POST", API_BASE .. "/admin/pending-claim", HttpService:JSONEncode({ code = code, userId = tostring(player.UserId) }))
+        local result = httpRequest("POST", API_BASE .. "/admin/pending-claim", HttpService:JSONEncode({ code = code, userId = tostring(player.UserId) }))
+        return result
     end)
     if not success then
         ui.StatusLabel.Text = "Status: ❌ Failed to generate code. Try again."
@@ -368,7 +403,8 @@ end)
 ui.LootlabsButton.MouseButton1Click:Connect(function()
     local code = generateCode()
     local success = pcall(function()
-        return httpRequest("POST", API_BASE .. "/admin/pending-claim", HttpService:JSONEncode({ code = code, userId = tostring(player.UserId) }))
+        local result = httpRequest("POST", API_BASE .. "/admin/pending-claim", HttpService:JSONEncode({ code = code, userId = tostring(player.UserId) }))
+        return result
     end)
     if not success then
         ui.StatusLabel.Text = "Status: ❌ Failed to generate code. Try again."
@@ -385,16 +421,16 @@ ui.LootlabsButton.MouseButton1Click:Connect(function()
 end)
 
 -- Check saved key again (in case UI saved it)
-savedKey = loadKey()
-if savedKey and validateKey(savedKey) then
+local savedKeyAfter = loadKey()
+if savedKeyAfter and validateKey(savedKeyAfter) then
     ui.MainFrame.Visible = false
     game:GetService("CoreGui"):FindFirstChild("EclipseKeyUI"):Destroy()
     gameScript()
 end
 
--- ========== HANDLE SCRIPT_KEY (provided by one‑liner loader) ==========
+-- ========== HANDLE SCRIPT_KEY (one‑liner loader) ==========
 if script_key then
-    -- Same validation but using the already defined functions
+    -- Re‑use validation function (it's already defined)
     if validateKey(script_key) then
         saveKey(script_key)
         local gameScript = SUPPORTED_GAMES[game.PlaceId]

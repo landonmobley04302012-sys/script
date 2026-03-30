@@ -1,9 +1,7 @@
--- Debug loader with error capture
+-- Minimal Master Loader
 local function httpRequest(url)
     local func = request or syn and syn.request or http_request or (game and game.HttpGet)
-    if not func then
-        error("No HTTP function available")
-    end
+    if not func then error("No HTTP function") end
     if func == request or func == http_request or (func == syn and syn.request) then
         local options = { Url = url, Method = "GET" }
         local response = func(options)
@@ -13,28 +11,80 @@ local function httpRequest(url)
     end
 end
 
-local SCRIPT_URLS = {
-    [1537690962] = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee%20swarm",
-}
+local function fileExists(f) return isfile and isfile(f) end
+local function readFile(f) if readfile then return readfile(f) end return nil end
+local function writeFile(f, d) if writefile then writefile(f, d) end end
 
-local scriptUrl = SCRIPT_URLS[game.PlaceId]
-if scriptUrl then
-    local scriptContent = httpRequest(scriptUrl)
-    if scriptContent then
-        local func, loadErr = loadstring(scriptContent)
-        if not func then
-            print("Loadstring error:", loadErr)
-        else
-            local ok, runErr = pcall(func)
-            if not ok then
-                print("Runtime error in script:", runErr)
-            else
-                print("Script ran successfully")
-            end
-        end
-    else
-        print("Failed to fetch script")
-    end
-else
-    print("Unsupported game")
+local API_BASE = "https://key-api-main.onrender.com"
+
+local function getDeviceToken()
+    local tokenFile = "device.txt"
+    if fileExists(tokenFile) then return readFile(tokenFile) end
+    local newToken = HttpService:GenerateGUID()
+    writeFile(tokenFile, newToken)
+    return newToken
 end
+local deviceToken = getDeviceToken()
+
+local function validateKey(key)
+    if not key or key == "" then return false end
+    local url = API_BASE .. "/validate-get?key=" .. key .. "&deviceId=" .. deviceToken
+    local result = httpRequest(url)
+    if not result then return false end
+    local data = HttpService:JSONDecode(result)
+    return data.valid or false
+end
+
+local function loadGameScript()
+    local GAME_SCRIPTS = {
+        [1537690962] = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee_swarm_plain.lua",
+        -- add other games here later
+    }
+    local url = GAME_SCRIPTS[game.PlaceId]
+    if not url then
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Unsupported Game",
+            Text = "This script is not supported in the current game.",
+            Duration = 5
+        })
+        return
+    end
+    local script = httpRequest(url)
+    if script then
+        loadstring(script)()
+    else
+        warn("Failed to load game script")
+    end
+end
+
+-- If a key was provided by the bot (script_key), validate and save it
+if script_key then
+    if validateKey(script_key) then
+        writeFile("key.txt", script_key)
+        loadGameScript()
+    else
+        warn("Invalid key provided in script_key.")
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Key Error",
+            Text = "The key embedded in the script is invalid or expired.",
+            Duration = 5
+        })
+    end
+    return
+end
+
+-- Otherwise, check for a saved key
+local function loadKey()
+    local keyFile = "key.txt"
+    if fileExists(keyFile) then return readFile(keyFile) end
+    return nil
+end
+local savedKey = loadKey()
+if savedKey and validateKey(savedKey) then
+    loadGameScript()
+    return
+end
+
+-- No valid key, but we still need to load the game script so it can show the UI.
+-- The game script will handle the UI and key input.
+loadGameScript()

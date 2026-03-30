@@ -1,21 +1,15 @@
--- Debug loader
+-- Debug loader with error capture
 local function httpRequest(url)
-    print("[DEBUG] Trying to fetch:", url)
     local func = request or syn and syn.request or http_request or (game and game.HttpGet)
     if not func then
-        print("[DEBUG] No HTTP function found!")
-        return nil
+        error("No HTTP function available")
     end
-    print("[DEBUG] Using HTTP function:", type(func))
     if func == request or func == http_request or (func == syn and syn.request) then
         local options = { Url = url, Method = "GET" }
         local response = func(options)
-        print("[DEBUG] Response status:", response and response.StatusCode or "nil")
         return response and response.Body
     else
-        local result = func(url)
-        print("[DEBUG] Result length:", result and #result or "nil")
-        return result
+        return func(url)
     end
 end
 
@@ -24,18 +18,23 @@ local SCRIPT_URLS = {
 }
 
 local scriptUrl = SCRIPT_URLS[game.PlaceId]
-print("[DEBUG] Game ID:", game.PlaceId)
-print("[DEBUG] Script URL:", scriptUrl)
-
 if scriptUrl then
     local scriptContent = httpRequest(scriptUrl)
-    print("[DEBUG] Script content length:", scriptContent and #scriptContent or "nil")
     if scriptContent then
-        print("[DEBUG] Loading script...")
-        loadstring(scriptContent)()
+        local func, loadErr = loadstring(scriptContent)
+        if not func then
+            print("Loadstring error:", loadErr)
+        else
+            local ok, runErr = pcall(func)
+            if not ok then
+                print("Runtime error in script:", runErr)
+            else
+                print("Script ran successfully")
+            end
+        end
     else
-        print("[DEBUG] Failed to fetch script")
+        print("Failed to fetch script")
     end
 else
-    print("[DEBUG] Unsupported game")
+    print("Unsupported game")
 end

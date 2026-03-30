@@ -1,47 +1,89 @@
--- Minimal Master Loader
+print("[DEBUG] Loader started")
+
 local function httpRequest(url)
+    print("[DEBUG] httpRequest called with url:", url)
     local func = request or syn and syn.request or http_request or (game and game.HttpGet)
-    if not func then error("No HTTP function") end
+    if not func then
+        print("[DEBUG] No HTTP function found")
+        error("No HTTP function")
+    end
+    print("[DEBUG] HTTP function found:", type(func))
     if func == request or func == http_request or (func == syn and syn.request) then
         local options = { Url = url, Method = "GET" }
         local response = func(options)
+        print("[DEBUG] Response status:", response and response.StatusCode)
         return response and response.Body
     else
-        return func(url)
+        local result = func(url)
+        print("[DEBUG] Result length:", result and #result)
+        return result
     end
 end
 
-local function fileExists(f) return isfile and isfile(f) end
-local function readFile(f) if readfile then return readfile(f) end return nil end
-local function writeFile(f, d) if writefile then writefile(f, d) end end
+local function fileExists(f)
+    print("[DEBUG] fileExists:", f, isfile and isfile(f))
+    return isfile and isfile(f)
+end
+local function readFile(f)
+    print("[DEBUG] readFile:", f, readfile and readfile(f))
+    if readfile then return readfile(f) end
+    return nil
+end
+local function writeFile(f, d)
+    print("[DEBUG] writeFile:", f, d)
+    if writefile then writefile(f, d) end
+end
+
+print("[DEBUG] Getting HttpService")
+local HttpService = game:GetService("HttpService")
+print("[DEBUG] HttpService obtained")
 
 local API_BASE = "https://key-api-main.onrender.com"
+print("[DEBUG] API_BASE:", API_BASE)
 
 local function getDeviceToken()
+    print("[DEBUG] getDeviceToken called")
     local tokenFile = "device.txt"
-    if fileExists(tokenFile) then return readFile(tokenFile) end
-    local newToken = HttpService:GenerateGUID()
-    writeFile(tokenFile, newToken)
-    return newToken
+    if fileExists(tokenFile) then
+        print("[DEBUG] reading existing token")
+        return readFile(tokenFile)
+    else
+        print("[DEBUG] generating new token")
+        local newToken = HttpService:GenerateGUID()
+        print("[DEBUG] newToken:", newToken)
+        writeFile(tokenFile, newToken)
+        return newToken
+    end
 end
 local deviceToken = getDeviceToken()
+print("[DEBUG] deviceToken:", deviceToken)
 
 local function validateKey(key)
+    print("[DEBUG] validateKey called with key:", key)
     if not key or key == "" then return false end
     local url = API_BASE .. "/validate-get?key=" .. key .. "&deviceId=" .. deviceToken
+    print("[DEBUG] validation url:", url)
     local result = httpRequest(url)
-    if not result then return false end
+    if not result then
+        print("[DEBUG] no result from httpRequest")
+        return false
+    end
+    print("[DEBUG] result:", result)
     local data = HttpService:JSONDecode(result)
+    print("[DEBUG] decoded data:", data)
     return data.valid or false
 end
 
 local function loadGameScript()
+    print("[DEBUG] loadGameScript called")
     local GAME_SCRIPTS = {
         [1537690962] = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee_swarm_plain.lua",
         -- add other games here later
     }
     local url = GAME_SCRIPTS[game.PlaceId]
+    print("[DEBUG] game.PlaceId:", game.PlaceId, "url:", url)
     if not url then
+        print("[DEBUG] unsupported game")
         game.StarterGui:SetCore("SendNotification", {
             Title = "Unsupported Game",
             Text = "This script is not supported in the current game.",
@@ -49,20 +91,32 @@ local function loadGameScript()
         })
         return
     end
+    print("[DEBUG] fetching script from:", url)
     local script = httpRequest(url)
     if script then
-        loadstring(script)()
+        print("[DEBUG] script length:", #script)
+        local func, err = loadstring(script)
+        if not func then
+            print("[DEBUG] loadstring error:", err)
+        else
+            print("[DEBUG] executing script")
+            func()
+        end
     else
+        print("[DEBUG] failed to fetch script")
         warn("Failed to load game script")
     end
 end
 
 -- If a key was provided by the bot (script_key), validate and save it
 if script_key then
+    print("[DEBUG] script_key provided:", script_key)
     if validateKey(script_key) then
+        print("[DEBUG] key valid, saving")
         writeFile("key.txt", script_key)
         loadGameScript()
     else
+        print("[DEBUG] key invalid")
         warn("Invalid key provided in script_key.")
         game.StarterGui:SetCore("SendNotification", {
             Title = "Key Error",
@@ -75,16 +129,24 @@ end
 
 -- Otherwise, check for a saved key
 local function loadKey()
+    print("[DEBUG] loadKey called")
     local keyFile = "key.txt"
-    if fileExists(keyFile) then return readFile(keyFile) end
+    if fileExists(keyFile) then
+        local key = readFile(keyFile)
+        print("[DEBUG] saved key:", key)
+        return key
+    end
     return nil
 end
 local savedKey = loadKey()
+print("[DEBUG] savedKey:", savedKey)
 if savedKey and validateKey(savedKey) then
+    print("[DEBUG] saved key valid, loading game script")
     loadGameScript()
     return
 end
 
+print("[DEBUG] no valid key, loading game script to show UI")
 -- No valid key, but we still need to load the game script so it can show the UI.
 -- The game script will handle the UI and key input.
 loadGameScript()

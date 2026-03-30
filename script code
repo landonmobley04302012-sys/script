@@ -1,28 +1,36 @@
-print("[DEBUG] Loader started")
-local url = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee%20swarm"
-print("[DEBUG] URL: " .. url)
-
--- Try to find an HTTP function
-local func = request or syn and syn.request or http_request or (game and game.HttpGet)
-print("[DEBUG] Found HTTP function:", func and "yes" or "no")
-
-if func then
-    print("[DEBUG] Calling HTTP function")
-    local response
+-- Universal HTTP function (works in Xeno)
+local function httpRequest(url)
+    local func = request or syn and syn.request or http_request or (game and game.HttpGet)
+    if not func then
+        error("No HTTP function available")
+    end
     if func == request or func == http_request or (func == syn and syn.request) then
         local options = { Url = url, Method = "GET" }
-        response = func(options)
-        response = response and response.Body
+        local response = func(options)
+        return response and response.Body
     else
-        response = func(url)
+        return func(url)
     end
-    print("[DEBUG] Response length:", response and #response or "nil")
-    if response then
-        print("[DEBUG] Loading script...")
-        loadstring(response)()
+end
+
+-- Master Loader
+local SCRIPT_URLS = {
+    [1537690962] = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee%20swarm",
+    -- Add more games here later
+}
+
+local scriptUrl = SCRIPT_URLS[game.PlaceId]
+if scriptUrl then
+    local scriptContent = httpRequest(scriptUrl)
+    if scriptContent then
+        loadstring(scriptContent)()
     else
-        print("[DEBUG] Failed to fetch script")
+        warn("Failed to load script")
     end
 else
-    print("[DEBUG] No HTTP function found")
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Unsupported Game",
+        Text = "This script is not supported in the current game.",
+        Duration = 5
+    })
 end

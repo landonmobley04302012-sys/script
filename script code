@@ -4,11 +4,6 @@ local SCRIPT_URLS = {
     -- Add more games here later
 }
 
-local scriptUrl = SCRIPT_URLS[game.PlaceId]
-if scriptUrl then
-    -- The bot's one‑liner already set `script_key` globally
-    loadstring(game:HttpGet(scriptUrl))()
-else
     game.StarterGui:SetCore("SendNotification", {
         Title = "Unsupported Game",
         Text = "This script is not supported in the current game.",

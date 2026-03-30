@@ -1,3 +1,2 @@
-print("Hello from loader")
-local scriptUrl = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee%20swarm"
+local scriptUrl = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/plain_script.lua" -- if you have a plain version uploaded
 loadstring(game:HttpGet(scriptUrl))()

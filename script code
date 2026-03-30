@@ -1,2 +1,36 @@
-local scriptUrl = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/plain_script.lua" -- if you have a plain version uploaded
-loadstring(game:HttpGet(scriptUrl))()
+-- Universal HTTP function (works in Xeno)
+local function httpRequest(url)
+    local func = request or syn and syn.request or http_request or (game and game.HttpGet)
+    if not func then
+        error("No HTTP function available")
+    end
+    if func == request or func == http_request or (func == syn and syn.request) then
+        local options = { Url = url, Method = "GET" }
+        local response = func(options)
+        return response and response.Body
+    else
+        return func(url)
+    end
+end
+
+-- Master Loader
+local SCRIPT_URLS = {
+    [1537690962] = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee_swarm_plain.lua",
+    -- Add more games here later
+}
+
+local scriptUrl = SCRIPT_URLS[game.PlaceId]
+if scriptUrl then
+    local scriptContent = httpRequest(scriptUrl)
+    if scriptContent then
+        loadstring(scriptContent)()
+    else
+        warn("Failed to load script")
+    end
+else
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Unsupported Game",
+        Text = "This script is not supported in the current game.",
+        Duration = 5
+    })
+end

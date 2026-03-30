@@ -1,7 +1,7 @@
--- MobScripts Universal Loader
+-- Master Loader (simple, uses game:HttpGet)
 local SCRIPT_URLS = {
     [1537690962] = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee%20swarm",
-    -- Add more games here later
+    -- Add more games here
 }
 
 local scriptUrl = SCRIPT_URLS[game.PlaceId]

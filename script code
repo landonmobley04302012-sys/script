@@ -1,0 +1,315 @@
+--[[
+    Eclipse Key System – Combined Script
+    - Custom UI, key validation, device binding
+    - Place your Bee Swarm code in the function below
+]]
+
+-- ========== ECLIPSE UI LIBRARY ==========
+local Library = {}
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+function Library:CreateWindow(config)
+    config = config or {}
+    local title = config.Title or "Eclipse"
+    local toggleKey = config.ToggleKey or Enum.KeyCode.G
+
+    local Window = {}
+    local currentKey = toggleKey
+    local MainFrame = nil
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "EclipseKeyUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = game.CoreGui
+
+    MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 400, 0, 400)
+    MainFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.Parent = ScreenGui
+    local mCorner = Instance.new("UICorner")
+    mCorner.CornerRadius = UDim.new(0, 10)
+    mCorner.Parent = MainFrame
+
+    -- Logo at the top
+    local logo = Instance.new("ImageLabel")
+    logo.Size = UDim2.new(0, 100, 0, 100)
+    logo.Position = UDim2.new(0.5, -50, 0, 10)
+    logo.BackgroundTransparency = 1
+    logo.Image = "rbxassetid://123476189117929"
+    logo.ScaleType = Enum.ScaleType.Fit
+    logo.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    logo.Parent = MainFrame
+
+    -- Title
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.Size = UDim2.new(1, 0, 0, 30)
+    titleLbl.Position = UDim2.new(0, 0, 0, 120)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Text = title
+    titleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLbl.TextSize = 18
+    titleLbl.Font = Enum.Font.GothamBold
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Center
+    titleLbl.Parent = MainFrame
+
+    -- Key input
+    local keyInput = Instance.new("TextBox")
+    keyInput.Size = UDim2.new(1, -40, 0, 34)
+    keyInput.Position = UDim2.new(0, 20, 0, 160)
+    keyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    keyInput.BorderSizePixel = 0
+    keyInput.PlaceholderText = "Enter your key"
+    keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyInput.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+    keyInput.TextSize = 14
+    keyInput.Font = Enum.Font.Gotham
+    keyInput.ClearTextOnFocus = false
+    keyInput.Parent = MainFrame
+    local kc = Instance.new("UICorner")
+    kc.CornerRadius = UDim.new(0, 5)
+    kc.Parent = keyInput
+
+    -- Status label
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1, -40, 0, 20)
+    statusLabel.Position = UDim2.new(0, 20, 0, 200)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Status: Ready"
+    statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    statusLabel.TextSize = 12
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.Parent = MainFrame
+
+    -- Verify button
+    local verifyBtn = Instance.new("TextButton")
+    verifyBtn.Size = UDim2.new(1, -40, 0, 34)
+    verifyBtn.Position = UDim2.new(0, 20, 0, 230)
+    verifyBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    verifyBtn.BorderSizePixel = 0
+    verifyBtn.Text = "Verify Key"
+    verifyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    verifyBtn.TextSize = 14
+    verifyBtn.Font = Enum.Font.GothamBold
+    verifyBtn.Parent = MainFrame
+    local vc = Instance.new("UICorner")
+    vc.CornerRadius = UDim.new(0, 5)
+    vc.Parent = verifyBtn
+
+    -- Separator
+    local sep = Instance.new("Frame")
+    sep.Size = UDim2.new(1, -40, 0, 1)
+    sep.Position = UDim2.new(0, 20, 0, 274)
+    sep.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    sep.BorderSizePixel = 0
+    sep.Parent = MainFrame
+
+    -- Offer label
+    local offerLabel = Instance.new("TextLabel")
+    offerLabel.Size = UDim2.new(1, -40, 0, 20)
+    offerLabel.Position = UDim2.new(0, 20, 0, 280)
+    offerLabel.BackgroundTransparency = 1
+    offerLabel.Text = "Or get a free key:"
+    offerLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    offerLabel.TextSize = 12
+    offerLabel.Font = Enum.Font.Gotham
+    offerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    offerLabel.Parent = MainFrame
+
+    -- Offer buttons
+    local function makeOfferButton(text, y)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -40, 0, 28)
+        btn.Position = UDim2.new(0, 20, 0, y)
+        btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        btn.BorderSizePixel = 0
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        btn.TextSize = 12
+        btn.Font = Enum.Font.Gotham
+        btn.Parent = MainFrame
+        local bc = Instance.new("UICorner")
+        bc.CornerRadius = UDim.new(0, 5)
+        bc.Parent = btn
+        return btn
+    end
+
+    local linkvertiseBtn = makeOfferButton("Linkvertise (One Step)", 305)
+    local lootlabsBtn = makeOfferButton("Lootlabs (Two Steps)", 338)
+
+    -- Close button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 20, 0, 20)
+    closeBtn.Position = UDim2.new(1, -30, 0, 10)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✖"
+    closeBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = MainFrame
+    local cc = Instance.new("UICorner")
+    cc.CornerRadius = UDim.new(1, 0)
+    cc.Parent = closeBtn
+
+    closeBtn.MouseButton1Click:Connect(function()
+        MainFrame.Visible = false
+        ScreenGui:Destroy()
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == currentKey then
+            MainFrame.Visible = not MainFrame.Visible
+        end
+    end)
+
+    Window.MainFrame = MainFrame
+    Window.KeyInput = keyInput
+    Window.StatusLabel = statusLabel
+    Window.VerifyButton = verifyBtn
+    Window.LinkvertiseButton = linkvertiseBtn
+    Window.LootlabsButton = lootlabsBtn
+    return Window
+end
+
+_G.Eclipse = Library
+
+-- ========== KEY MANAGER CONFIGURATION ==========
+local API_BASE = "https://key-api-main.onrender.com"  -- Your Render API URL
+local OFFERS = {
+    Linkvertise = "https://landonmobley04302012-sys.github.io/linkvertise-offer/offer.html?user_id=" .. game:GetService("Players").LocalPlayer.UserId,
+    Lootlabs = "https://lootdest.org/s?2LHy7lK0"  -- Your Step 1 link
+}
+
+-- ========== SUPPORTED GAMES ==========
+local SUPPORTED_GAMES = {
+    [1537690962] = function()
+        -- ############################################################
+        -- ########## PASTE YOUR BEE SWARM FARMING CODE BELOW #########
+        -- ############################################################
+
+        print("Bee Swarm Simulator script loaded!")
+        -- Your farming code goes here...
+
+        -- ############################################################
+        -- ############################################################
+    end,
+    -- Add other games here with their IDs and code functions.
+}
+
+-- ========== KEY MANAGER LOGIC ==========
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
+
+local function getDeviceToken()
+    local tokenFile = "device.txt"
+    if isfile and isfile(tokenFile) then
+        return readfile(tokenFile)
+    else
+        local newToken = HttpService:GenerateGUID()
+        writefile(tokenFile, newToken)
+        return newToken
+    end
+end
+local deviceToken = getDeviceToken()
+
+local function saveKey(key)
+    if writefile then
+        writefile("key.txt", key)
+    end
+end
+
+local function loadKey()
+    if isfile and isfile("key.txt") then
+        return readfile("key.txt")
+    end
+    return nil
+end
+
+local function validateKey(key)
+    if not key or key == "" then return false end
+    local success, result = pcall(function()
+        return game:HttpPost(API_BASE .. "/validate", HttpService:JSONEncode({
+            key = key,
+            deviceId = deviceToken
+        }), {["Content-Type"] = "application/json"})
+    end)
+    if not success then return false end
+    local data = HttpService:JSONDecode(result)
+    return data.valid or false
+end
+
+local gameId = game.PlaceId
+local gameScript = SUPPORTED_GAMES[gameId]
+
+if not gameScript then
+    local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+    local Window = Fluent:CreateWindow({
+        Title = "Eclipse",
+        SubTitle = "Unsupported Game",
+        Size = UDim2.fromOffset(400, 200)
+    })
+    local tab = Window:AddTab({ Title = "Error", Icon = "error" })
+    tab:AddParagraph({
+        Title = "Unsupported Game",
+        Content = string.format("This script is not supported for game ID %d.\nPlease use it in one of the supported games.", gameId)
+    })
+    return
+end
+
+local savedKey = loadKey()
+if savedKey and validateKey(savedKey) then
+    gameScript()
+    return
+end
+
+-- Show UI
+local ui = _G.Eclipse:CreateWindow({ Title = "Eclipse Key System", ToggleKey = Enum.KeyCode.G })
+ui.StatusLabel.Text = "Status: Ready"
+
+ui.VerifyButton.MouseButton1Click:Connect(function()
+    local key = ui.KeyInput.Text
+    if key == "" then
+        ui.StatusLabel.Text = "Status: ❌ Please enter a key"
+        return
+    end
+    ui.StatusLabel.Text = "Status: ⏳ Verifying..."
+    if validateKey(key) then
+        saveKey(key)
+        ui.StatusLabel.Text = "Status: ✅ Key verified! Loading script..."
+        task.wait(1)
+        ui.MainFrame.Visible = false
+        game.CoreGui:FindFirstChild("EclipseKeyUI"):Destroy()
+        gameScript()
+    else
+        ui.StatusLabel.Text = "Status: ❌ Invalid key"
+    end
+end)
+
+ui.LinkvertiseButton.MouseButton1Click:Connect(function()
+    setclipboard(OFFERS.Linkvertise)
+    ui.StatusLabel.Text = "Status: Link copied! Complete the offer."
+    task.delay(3, function()
+        if ui.StatusLabel.Text == "Status: Link copied! Complete the offer." then
+            ui.StatusLabel.Text = "Status: Ready"
+        end
+    end)
+end)
+
+ui.LootlabsButton.MouseButton1Click:Connect(function()
+    setclipboard(OFFERS.Lootlabs)
+    ui.StatusLabel.Text = "Status: Lootlabs link copied! Complete the offer."
+    task.delay(3, function()
+        if ui.StatusLabel.Text == "Status: Lootlabs link copied! Complete the offer." then
+            ui.StatusLabel.Text = "Status: Ready"
+        end
+    end)
+end)

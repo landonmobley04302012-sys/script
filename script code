@@ -1,8 +1,8 @@
 --[[
-    Eclipse Key System – Master Loader
+    Eclipse Key System – Master Loader (Final)
     - Universal HTTP (works in Xeno)
-    - Full UI and key management
-    - Loads the game script after key validation
+    - Full UI with key input and offer buttons
+    - After key validation, loads the obfuscated Bee Swarm script
 ]]
 
 -- ========== UNIVERSAL HTTP FUNCTION ==========
@@ -26,10 +26,10 @@ local function writeFile(file, data) if writefile then writefile(file, data) end
 -- ========== CONFIGURATION ==========
 local API_BASE = "https://key-api-main.onrender.com"
 local OFFERS = {
-    Linkvertise = "https://link-center.net/4622724/bsUCFRC0QrKk",
+    Linkvertise = "https://landonmobley04302012-sys.github.io/linkvertise-offer/offer.html",
     Lootlabs = "https://lootdest.org/s?2LHy7lK0"
 }
-local GAME_SCRIPT_URL = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee%20swarm"  -- <-- correct URL
+local GAME_SCRIPT_URL = "https://raw.githubusercontent.com/landonmobley04302012-sys/ob-lua-scripts/main/bee%20swarm"
 
 -- ========== DEVICE TOKEN ==========
 local function getDeviceToken()
@@ -78,16 +78,181 @@ if savedKey and validateKey(savedKey) then
 end
 
 -- ========== ECLIPSE UI LIBRARY ==========
--- (This is the same UI you've been using. I'll include it in full here.)
--- I'll paste it in a compact form to keep the message short. If you need the full UI code, it's the same as before.
--- For now, I'll assume you have it. If not, I can repost it. But to avoid duplication, I'll provide it below.
+local Library = {}
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
--- I'll embed the UI code directly here – it's long, but it must be included.
--- To keep this message manageable, I'll put it as a block.
+function Library:CreateWindow(config)
+    config = config or {}
+    local title = config.Title or "Eclipse"
+    local toggleKey = config.ToggleKey or Enum.KeyCode.G
 
--- ... (the UI code goes here – you can copy it from your previous working script)
+    local Window = {}
+    local currentKey = toggleKey
+    local MainFrame = nil
 
--- After the UI code, create the window and connect buttons.
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "EclipseKeyUI"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Parent = game:GetService("CoreGui")
+
+    MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 400, 0, 400)
+    MainFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.Parent = ScreenGui
+    local mCorner = Instance.new("UICorner")
+    mCorner.CornerRadius = UDim.new(0, 10)
+    mCorner.Parent = MainFrame
+
+    -- Logo
+    local logo = Instance.new("ImageLabel")
+    logo.Size = UDim2.new(0, 100, 0, 100)
+    logo.Position = UDim2.new(0.5, -50, 0, 10)
+    logo.BackgroundTransparency = 1
+    logo.Image = "rbxassetid://123476189117929"
+    logo.ScaleType = Enum.ScaleType.Fit
+    logo.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    logo.Parent = MainFrame
+
+    -- Title
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.Size = UDim2.new(1, 0, 0, 30)
+    titleLbl.Position = UDim2.new(0, 0, 0, 120)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Text = title
+    titleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLbl.TextSize = 18
+    titleLbl.Font = Enum.Font.GothamBold
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Center
+    titleLbl.Parent = MainFrame
+
+    -- Key input
+    local keyInput = Instance.new("TextBox")
+    keyInput.Size = UDim2.new(1, -40, 0, 34)
+    keyInput.Position = UDim2.new(0, 20, 0, 160)
+    keyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    keyInput.BorderSizePixel = 0
+    keyInput.PlaceholderText = "Enter your key"
+    keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyInput.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+    keyInput.TextSize = 14
+    keyInput.Font = Enum.Font.Gotham
+    keyInput.ClearTextOnFocus = false
+    keyInput.Parent = MainFrame
+    local kc = Instance.new("UICorner")
+    kc.CornerRadius = UDim.new(0, 5)
+    kc.Parent = keyInput
+
+    -- Status label
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1, -40, 0, 20)
+    statusLabel.Position = UDim2.new(0, 20, 0, 200)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Status: Ready"
+    statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    statusLabel.TextSize = 12
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.Parent = MainFrame
+
+    -- Verify button
+    local verifyBtn = Instance.new("TextButton")
+    verifyBtn.Size = UDim2.new(1, -40, 0, 34)
+    verifyBtn.Position = UDim2.new(0, 20, 0, 230)
+    verifyBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    verifyBtn.BorderSizePixel = 0
+    verifyBtn.Text = "Verify Key"
+    verifyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    verifyBtn.TextSize = 14
+    verifyBtn.Font = Enum.Font.GothamBold
+    verifyBtn.Parent = MainFrame
+    local vc = Instance.new("UICorner")
+    vc.CornerRadius = UDim.new(0, 5)
+    vc.Parent = verifyBtn
+
+    -- Separator
+    local sep = Instance.new("Frame")
+    sep.Size = UDim2.new(1, -40, 0, 1)
+    sep.Position = UDim2.new(0, 20, 0, 274)
+    sep.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    sep.BorderSizePixel = 0
+    sep.Parent = MainFrame
+
+    -- Offer label
+    local offerLabel = Instance.new("TextLabel")
+    offerLabel.Size = UDim2.new(1, -40, 0, 20)
+    offerLabel.Position = UDim2.new(0, 20, 0, 280)
+    offerLabel.BackgroundTransparency = 1
+    offerLabel.Text = "Or get a free key:"
+    offerLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    offerLabel.TextSize = 12
+    offerLabel.Font = Enum.Font.Gotham
+    offerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    offerLabel.Parent = MainFrame
+
+    -- Offer buttons
+    local function makeOfferButton(text, y)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, -40, 0, 28)
+        btn.Position = UDim2.new(0, 20, 0, y)
+        btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        btn.BorderSizePixel = 0
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        btn.TextSize = 12
+        btn.Font = Enum.Font.Gotham
+        btn.Parent = MainFrame
+        local bc = Instance.new("UICorner")
+        bc.CornerRadius = UDim.new(0, 5)
+        bc.Parent = btn
+        return btn
+    end
+
+    local linkvertiseBtn = makeOfferButton("Linkvertise (One Step)", 305)
+    local lootlabsBtn = makeOfferButton("Lootlabs (Two Steps)", 338)
+
+    -- Close button
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 20, 0, 20)
+    closeBtn.Position = UDim2.new(1, -30, 0, 10)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✖"
+    closeBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    closeBtn.TextSize = 14
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Parent = MainFrame
+    local cc = Instance.new("UICorner")
+    cc.CornerRadius = UDim.new(1, 0)
+    cc.Parent = closeBtn
+
+    closeBtn.MouseButton1Click:Connect(function()
+        MainFrame.Visible = false
+        ScreenGui:Destroy()
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == currentKey then
+            MainFrame.Visible = not MainFrame.Visible
+        end
+    end)
+
+    Window.MainFrame = MainFrame
+    Window.KeyInput = keyInput
+    Window.StatusLabel = statusLabel
+    Window.VerifyButton = verifyBtn
+    Window.LinkvertiseButton = linkvertiseBtn
+    Window.LootlabsButton = lootlabsBtn
+    return Window
+end
+
+_G.Eclipse = Library
 
 -- ========== CREATE UI ==========
 local ui = _G.Eclipse:CreateWindow({ Title = "Eclipse Key System", ToggleKey = Enum.KeyCode.G })
@@ -120,7 +285,7 @@ end)
 
 ui.LinkvertiseButton.MouseButton1Click:Connect(function()
     local code = generateCode()
-    local url = OFFERS.Linkvertise .. "?code=" .. code
+    local url = OFFERS.Linkvertise .. "?user_id=" .. player.UserId .. "&code=" .. code
     setclipboard(url)
     ui.StatusLabel.Text = "Status: Link copied! Complete the offer and then return here and paste the key you receive."
     task.delay(3, function()
